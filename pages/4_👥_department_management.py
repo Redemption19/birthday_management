@@ -26,25 +26,27 @@ if st.sidebar.checkbox("Show Debug Info"):
 
 # Convert to DataFrame and handle department names safely
 members_df = pd.DataFrame(members if members else [])
-if not members_df.empty:
-    try:
-        # Try to extract department name from the nested structure
-        members_df['department_name'] = members_df.apply(
-            lambda x: x.get('departments', {}).get('name', 'No Department') 
-            if isinstance(x.get('departments'), dict) 
-            else 'No Department',
-            axis=1
-        )
-    except Exception as e:
-        print(f"Error processing departments: {str(e)}")
-        members_df['department_name'] = 'No Department'
 
-    # Ensure required columns exist
-    required_columns = ['full_name', 'birthday', 'phone_number', 'email']
+# Initialize department_name column
+members_df['department_name'] = 'No Department'
+
+if not members_df.empty:
+    # Create department mapping
+    dept_mapping = {dept['id']: dept['name'] for dept in departments}
+    
+    # Assign department names
+    if 'department_id' in members_df.columns:
+        members_df['department_name'] = members_df['department_id'].apply(
+            lambda x: dept_mapping.get(x, 'No Department')
+        )
+    
+    # Ensure all required columns exist
+    required_columns = ['full_name', 'birthday', 'phone_number', 'email', 'id']
     for col in required_columns:
         if col not in members_df.columns:
             members_df[col] = None
 
+# Convert contributions to DataFrame
 contrib_df = pd.DataFrame(contributions if contributions else [])
 
 # Search and Filter Section

@@ -50,14 +50,11 @@ def get_youth_members():
         if not supabase:
             return []
             
-        # Debug print
-        print("Fetching youth members...")
+        print("Fetching youth members...")  # Debug print
         
-        # Updated query to properly join with departments
+        # Get all member data including department_id
         response = supabase.table("youth_members")\
-            .select(
-                "id, full_name, birthday, phone_number, email, department_id, created_at, updated_at, departments!inner(*)"
-            )\
+            .select("id, full_name, birthday, phone_number, email, department_id")\
             .execute()
             
         print(f"Fetched {len(response.data)} members")  # Debug log
@@ -131,18 +128,16 @@ def add_contribution(member_id, amount, contribution_type, payment_date, week_nu
 
 @st.cache_data(ttl=5, show_spinner=False)
 def get_departments():
-    """Get all departments with member count"""
+    """Get all departments"""
     try:
         supabase = init_connection()
         if not supabase:
             return []
             
-        # Debug print
-        print("Fetching departments...")
+        print("Fetching departments...")  # Debug print
         
-        # Updated query to include all department info
         response = supabase.table("departments")\
-            .select("*")\
+            .select("id, name, description")\
             .execute()
             
         print(f"Fetched {len(response.data)} departments")  # Debug log
