@@ -42,14 +42,29 @@ def init_connection():
         st.error(f"Connection error: {str(e)}")
         return None
 
-# Add TTL (Time To Live) to cache and enable clearing
 @st.cache_data(ttl=5, show_spinner=False)
 def get_youth_members():
-    supabase = init_connection()
-    response = supabase.table("youth_members")\
-        .select("*, departments(name)")\
-        .execute()
-    return response.data
+    """Get all youth members with their department info"""
+    try:
+        supabase = init_connection()
+        if not supabase:
+            return []
+            
+        # Debug print
+        print("Fetching youth members...")
+        
+        # Updated query to properly join with departments
+        response = supabase.table("youth_members")\
+            .select(
+                "id, full_name, birthday, phone_number, email, department_id, created_at, updated_at, departments!inner(*)"
+            )\
+            .execute()
+            
+        print(f"Fetched {len(response.data)} members")  # Debug log
+        return response.data
+    except Exception as e:
+        print(f"Error fetching members: {str(e)}")
+        return []
 
 def add_youth_member(full_name, birthday, department_id, phone_number=None, email=None):
     """Add a new youth member"""
@@ -76,12 +91,30 @@ def add_youth_member(full_name, birthday, department_id, phone_number=None, emai
 
 @st.cache_data(ttl=5, show_spinner=False)
 def get_contributions(member_id=None):
-    supabase = init_connection()
-    query = supabase.table("contributions")\
-        .select("*, youth_members(full_name)")
-    if member_id:
-        query = query.eq("member_id", member_id)
-    return query.execute().data
+    """Get all contributions with member info"""
+    try:
+        supabase = init_connection()
+        if not supabase:
+            return []
+            
+        # Debug print
+        print("Fetching contributions...")
+        
+        # Updated query with proper joins
+        query = supabase.table("contributions")\
+            .select(
+                "id, amount, contribution_type, payment_date, week_number, month, year, member_id, youth_members!inner(full_name)"
+            )
+        
+        if member_id:
+            query = query.eq("member_id", member_id)
+            
+        response = query.execute()
+        print(f"Fetched {len(response.data)} contributions")  # Debug log
+        return response.data
+    except Exception as e:
+        print(f"Error fetching contributions: {str(e)}")
+        return []
 
 def add_contribution(member_id, amount, contribution_type, payment_date, week_number=None):
     supabase = init_connection()
@@ -98,20 +131,47 @@ def add_contribution(member_id, amount, contribution_type, payment_date, week_nu
 
 @st.cache_data(ttl=5, show_spinner=False)
 def get_departments():
-    supabase = init_connection()
-    response = supabase.table("departments").select("*").execute()
-    return response.data
+    """Get all departments with member count"""
+    try:
+        supabase = init_connection()
+        if not supabase:
+            return []
+            
+        # Debug print
+        print("Fetching departments...")
+        
+        # Updated query to include all department info
+        response = supabase.table("departments")\
+            .select("*")\
+            .execute()
+            
+        print(f"Fetched {len(response.data)} departments")  # Debug log
+        return response.data
+    except Exception as e:
+        print(f"Error fetching departments: {str(e)}")
+        return []
 
 @st.cache_data(ttl=5, show_spinner=False)
 def get_monthly_birthdays(month):
-    supabase = init_connection()
-    # Convert month to two digits (e.g., 3 -> "03")
-    month_str = f"{month:02d}"
-    response = supabase.table("youth_members")\
-        .select("*")\
-        .ilike("birthday", f"%/{month_str}")\
-        .execute()
-    return response.data
+    """Get birthdays for a specific month"""
+    try:
+        supabase = init_connection()
+        if not supabase:
+            return []
+            
+        # Convert month to two digits
+        month_str = f"{month:02d}"
+        
+        # Updated query with proper format
+        response = supabase.table("youth_members")\
+            .select("*, departments!inner(*)")\
+            .ilike("birthday", f"%/{month_str}")\
+            .execute()
+            
+        return response.data
+    except Exception as e:
+        print(f"Error fetching birthdays: {str(e)}")
+        return []
 
 def update_youth_member(member_id, full_name, birthday, department_id, phone_number=None, email=None):
     """Update an existing youth member"""
