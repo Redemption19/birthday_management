@@ -6,17 +6,19 @@ from datetime import datetime
 def init_connection():
     """Initialize Supabase connection with token refresh"""
     try:
-        supabase = create_client(
-            st.secrets["SUPABASE_URL"],
-            st.secrets["SUPABASE_KEY"]
-        )
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        
+        # Create client without proxy argument
+        supabase = create_client(url, key)
         
         # Check if we have a session
         if 'user' in st.session_state:
             try:
                 # Try to get user (will fail if token expired)
                 user = supabase.auth.get_user()
-            except:
+            except Exception as auth_error:
+                print(f"Auth error: {str(auth_error)}")
                 # Token expired, try to refresh
                 try:
                     refresh_response = supabase.auth.refresh_session()
@@ -24,15 +26,19 @@ def init_connection():
                         st.session_state['user'] = refresh_response.user
                     else:
                         # If refresh fails, clear session and redirect to login
-                        del st.session_state['user']
+                        if 'user' in st.session_state:
+                            del st.session_state['user']
                         st.rerun()
-                except:
+                except Exception as refresh_error:
+                    print(f"Refresh error: {str(refresh_error)}")
                     # If refresh fails, clear session and redirect to login
-                    del st.session_state['user']
+                    if 'user' in st.session_state:
+                        del st.session_state['user']
                     st.rerun()
         
         return supabase
     except Exception as e:
+        print(f"Connection error details: {str(e)}")  # Detailed error logging
         st.error(f"Connection error: {str(e)}")
         return None
 
