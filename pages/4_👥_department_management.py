@@ -289,4 +289,4 @@ else:
         display_df.columns = display_names
         st.dataframe(display_df, use_container_width=True)
     else:
-        st.info("No member data available to display")
+        st.info("No member data available to display") 
