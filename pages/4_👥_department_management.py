@@ -290,21 +290,3 @@ else:
         st.dataframe(display_df, use_container_width=True)
     else:
         st.info("No member data available to display")
-
-# After getting the data
-st.sidebar.markdown("### Debug Information")
-st.sidebar.write("Data Fetched:")
-st.sidebar.write(f"Members: {len(members)}")
-st.sidebar.write(f"Departments: {len(departments)}")
-st.sidebar.write(f"Contributions: {len(contributions)}")
-
-if st.sidebar.checkbox("Show Raw Data"):
-    st.sidebar.json(members[0] if members else "No members")
-    st.sidebar.json(departments[0] if departments else "No departments")
-    st.sidebar.json(contributions[0] if contributions else "No contributions")
-
-# Print connection status
-if init_connection():
-    st.sidebar.success("Database connected")
-else:
-    st.sidebar.error("Database connection failed") 
