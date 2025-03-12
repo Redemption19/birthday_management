@@ -1,0 +1,5 @@
+streamlit==1.31.0
+supabase==2.3.5
+pandas
+python-dotenv==1.0.0
+twilio==8.13.0 
