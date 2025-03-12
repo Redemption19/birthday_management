@@ -243,8 +243,33 @@ else:
         )
         st.plotly_chart(fig, use_container_width=True)
     
-    # Display filtered members
+    # Display filtered members with column checking
     st.subheader("Filtered Members")
-    display_df = filtered_df[['full_name', 'department_name', 'birthday', 'phone_number']]
-    display_df.columns = ['Name', 'Department', 'Birthday', 'Phone']
-    st.dataframe(display_df, use_container_width=True) 
+    
+    # Get available columns
+    available_columns = []
+    display_names = []
+    
+    # Check each column and add if available
+    if 'full_name' in filtered_df.columns:
+        available_columns.append('full_name')
+        display_names.append('Name')
+    
+    if 'department_name' in filtered_df.columns:
+        available_columns.append('department_name')
+        display_names.append('Department')
+    
+    if 'birthday' in filtered_df.columns:
+        available_columns.append('birthday')
+        display_names.append('Birthday')
+    
+    if 'phone_number' in filtered_df.columns:
+        available_columns.append('phone_number')
+        display_names.append('Phone')
+    
+    if available_columns:
+        display_df = filtered_df[available_columns]
+        display_df.columns = display_names
+        st.dataframe(display_df, use_container_width=True)
+    else:
+        st.info("No member data available to display") 
