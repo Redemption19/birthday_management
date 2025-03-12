@@ -74,7 +74,7 @@ with tab1:
         members = get_youth_members()
         if members:
             df = pd.DataFrame(members)
-            df['department'] = df['departments'].apply(lambda x: x['name'] if x else 'No Department')
+            df['department'] = df['department_id'].apply(lambda x: dept_options.get(x, 'No Department'))
             export_df = df[['full_name', 'birthday', 'department', 'phone_number', 'email']]
             export_df.columns = ['Name', 'Birthday', 'Department', 'Phone', 'Email']
             
@@ -174,7 +174,7 @@ with tab1:
             if filter_department != "All Departments":
                 filtered_members = [
                     m for m in filtered_members
-                    if m['departments']['name'] == filter_department
+                    if m['department_id'] == dept_options[filter_department]
                 ]
             
             if filtered_members:
@@ -302,7 +302,7 @@ with tab1:
     members = get_youth_members()
     if members:
         df = pd.DataFrame(members)
-        df['department'] = df['departments'].apply(lambda x: x['name'] if x else 'No Department')
+        df['department'] = df['department_id'].apply(lambda x: dept_options.get(x, 'No Department'))
         display_df = df[['full_name', 'birthday', 'department', 'phone_number', 'email']]
         display_df.columns = ['Name', 'Birthday', 'Department', 'Phone', 'Email']
         
