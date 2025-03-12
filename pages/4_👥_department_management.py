@@ -16,14 +16,6 @@ departments = get_departments()
 members = get_youth_members()
 contributions = get_contributions()
 
-# Debug information
-if st.sidebar.checkbox("Show Debug Info"):
-    st.sidebar.write("Raw Data:")
-    st.sidebar.write("Members:", len(members))
-    st.sidebar.write("Departments:", len(departments))
-    if members:
-        st.sidebar.write("Sample member:", members[0])
-
 # Convert to DataFrame and handle department names safely
 members_df = pd.DataFrame(members if members else [])
 
