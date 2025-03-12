@@ -16,21 +16,36 @@ departments = get_departments()
 members = get_youth_members()
 contributions = get_contributions()
 
-# Convert to DataFrame and handle department names safely
-members_df = pd.DataFrame(members)
-try:
-    # Try the original method first
-    members_df['department_name'] = members_df['departments'].apply(lambda x: x['name'] if x else 'No Department')
-except (KeyError, TypeError):
-    try:
-        # Try alternate column name
-        members_df['department_name'] = members_df['department'].apply(lambda x: x['name'] if x else 'No Department')
-    except (KeyError, TypeError):
-        # If both fail, set default
-        members_df['department_name'] = 'No Department'
-        print("Warning: No department information found in members data")
+# Debug information
+if st.sidebar.checkbox("Show Debug Info"):
+    st.sidebar.write("Raw Data:")
+    st.sidebar.write("Members:", len(members))
+    st.sidebar.write("Departments:", len(departments))
+    if members:
+        st.sidebar.write("Sample member:", members[0])
 
-contrib_df = pd.DataFrame(contributions) if contributions else pd.DataFrame()
+# Convert to DataFrame and handle department names safely
+members_df = pd.DataFrame(members if members else [])
+if not members_df.empty:
+    try:
+        # Try to extract department name from the nested structure
+        members_df['department_name'] = members_df.apply(
+            lambda x: x.get('departments', {}).get('name', 'No Department') 
+            if isinstance(x.get('departments'), dict) 
+            else 'No Department',
+            axis=1
+        )
+    except Exception as e:
+        print(f"Error processing departments: {str(e)}")
+        members_df['department_name'] = 'No Department'
+
+    # Ensure required columns exist
+    required_columns = ['full_name', 'birthday', 'phone_number', 'email']
+    for col in required_columns:
+        if col not in members_df.columns:
+            members_df[col] = None
+
+contrib_df = pd.DataFrame(contributions if contributions else [])
 
 # Search and Filter Section
 st.subheader("Search & Filter")
