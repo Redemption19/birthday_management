@@ -16,9 +16,20 @@ departments = get_departments()
 members = get_youth_members()
 contributions = get_contributions()
 
-# Convert to DataFrame
+# Convert to DataFrame and handle department names safely
 members_df = pd.DataFrame(members)
-members_df['department_name'] = members_df['departments'].apply(lambda x: x['name'] if x else 'No Department')
+try:
+    # Try the original method first
+    members_df['department_name'] = members_df['departments'].apply(lambda x: x['name'] if x else 'No Department')
+except (KeyError, TypeError):
+    try:
+        # Try alternate column name
+        members_df['department_name'] = members_df['department'].apply(lambda x: x['name'] if x else 'No Department')
+    except (KeyError, TypeError):
+        # If both fail, set default
+        members_df['department_name'] = 'No Department'
+        print("Warning: No department information found in members data")
+
 contrib_df = pd.DataFrame(contributions) if contributions else pd.DataFrame()
 
 # Search and Filter Section
