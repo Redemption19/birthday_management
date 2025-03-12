@@ -9,36 +9,15 @@ def init_connection():
         url = st.secrets["SUPABASE_URL"]
         key = st.secrets["SUPABASE_KEY"]
         
-        # Create client without proxy argument
+        # Create client with service role key for admin access
         supabase = create_client(url, key)
         
-        # Check if we have a session
-        if 'user' in st.session_state:
-            try:
-                # Try to get user (will fail if token expired)
-                user = supabase.auth.get_user()
-            except Exception as auth_error:
-                print(f"Auth error: {str(auth_error)}")
-                # Token expired, try to refresh
-                try:
-                    refresh_response = supabase.auth.refresh_session()
-                    if refresh_response.user:
-                        st.session_state['user'] = refresh_response.user
-                    else:
-                        # If refresh fails, clear session and redirect to login
-                        if 'user' in st.session_state:
-                            del st.session_state['user']
-                        st.rerun()
-                except Exception as refresh_error:
-                    print(f"Refresh error: {str(refresh_error)}")
-                    # If refresh fails, clear session and redirect to login
-                    if 'user' in st.session_state:
-                        del st.session_state['user']
-                    st.rerun()
+        # Add debug logging
+        print("Database connection initialized")
         
         return supabase
     except Exception as e:
-        print(f"Connection error details: {str(e)}")  # Detailed error logging
+        print(f"Connection error details: {str(e)}")
         st.error(f"Connection error: {str(e)}")
         return None
 
@@ -50,15 +29,19 @@ def get_youth_members():
         if not supabase:
             return []
             
-        print("Fetching youth members...")  # Debug print
+        print("Fetching youth members...")
         
-        # Get all member data including department_id
-        response = supabase.table("youth_members")\
-            .select("id, full_name, birthday, phone_number, email, department_id")\
-            .execute()
+        # Use simpler query first to debug
+        response = supabase.from_("youth_members").select("*").execute()
+        print(f"Raw response: {response}")  # Debug print
+        
+        if response.data:
+            print(f"Fetched {len(response.data)} members")
+            return response.data
+        else:
+            print("No members found in response")
+            return []
             
-        print(f"Fetched {len(response.data)} members")  # Debug log
-        return response.data
     except Exception as e:
         print(f"Error fetching members: {str(e)}")
         return []
@@ -134,14 +117,19 @@ def get_departments():
         if not supabase:
             return []
             
-        print("Fetching departments...")  # Debug print
+        print("Fetching departments...")
         
-        response = supabase.table("departments")\
-            .select("id, name, description")\
-            .execute()
+        # Simple query first
+        response = supabase.from_("departments").select("*").execute()
+        print(f"Raw departments response: {response}")  # Debug print
+        
+        if response.data:
+            print(f"Fetched {len(response.data)} departments")
+            return response.data
+        else:
+            print("No departments found in response")
+            return []
             
-        print(f"Fetched {len(response.data)} departments")  # Debug log
-        return response.data
     except Exception as e:
         print(f"Error fetching departments: {str(e)}")
         return []
