@@ -39,8 +39,9 @@ def check_auth():
                     st.session_state['user'] = response.user
                     st.session_state['access_token'] = response.session.access_token
                     st.session_state['refresh_token'] = response.session.refresh_token
-                    # Add rerun here to refresh the page and remove login form
-                    st.rerun()
+                    st.success("Login successful!")
+                    time.sleep(0.5)  # Small delay to ensure state is updated
+                    st.experimental_rerun()  # Use experimental_rerun instead of rerun
                 except Exception as e:
                     st.error("Invalid credentials")
                     return False
