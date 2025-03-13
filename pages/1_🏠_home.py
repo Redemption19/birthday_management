@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.database import init_connection, get_youth_members, get_contributions, get_monthly_birthdays
+from utils.database import init_connection, get_youth_members, get_contributions, get_monthly_birthdays, get_departments
 import pandas as pd
 from datetime import datetime
 import plotly.express as px
@@ -18,6 +18,10 @@ current_month = datetime.now().month
 current_month_birthdays = get_monthly_birthdays(current_month)
 all_members = get_youth_members()
 all_contributions = get_contributions()
+
+# Get departments for mapping
+departments = get_departments()
+dept_mapping = {dept['id']: dept['name'] for dept in departments}
 
 # Create columns for different metrics
 col1, col2, col3 = st.columns(3)
@@ -44,7 +48,7 @@ with chart_col1:
     st.subheader("Members by Department")
     if all_members:
         df = pd.DataFrame(all_members)
-        dept_counts = df['departments'].apply(lambda x: x['name'] if x else 'No Department').value_counts()
+        dept_counts = df['department_id'].apply(lambda x: dept_mapping.get(x, 'No Department')).value_counts()
         fig = px.pie(
             values=dept_counts.values,
             names=dept_counts.index,
