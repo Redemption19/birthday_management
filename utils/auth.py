@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.database import init_connection
 import re
+import time
 
 def init_auth():
     """Initialize authentication"""
@@ -33,12 +34,14 @@ def check_auth():
                         "email": email,
                         "password": password
                     })
+                    # Update session state
                     st.session_state.authenticated = True
                     st.session_state['user'] = response.user
                     st.session_state['access_token'] = response.session.access_token
                     st.session_state['refresh_token'] = response.session.refresh_token
                     st.success("Login successful!")
-                    st.rerun()
+                    time.sleep(0.5)  # Add a small delay
+                    st.experimental_rerun()  # Use experimental_rerun instead of rerun
                     return True
                 except Exception as e:
                     st.error("Invalid credentials")
