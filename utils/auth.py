@@ -40,8 +40,6 @@ def check_auth():
                     st.session_state['access_token'] = response.session.access_token
                     st.session_state['refresh_token'] = response.session.refresh_token
                     st.success("Login successful!")
-                    time.sleep(0.5)  # Add a small delay
-                    st.experimental_rerun()  # Use experimental_rerun instead of rerun
                     return True
                 except Exception as e:
                     st.error("Invalid credentials")
@@ -73,9 +71,10 @@ def try_login(email, password):
         st.session_state['access_token'] = response.session.access_token
         st.session_state['refresh_token'] = response.session.refresh_token
         st.success("Login successful!")
-        st.rerun()
+        return True
     except Exception as e:
         st.error(f"Login failed: {str(e)}")
+        return False
 
 def logout():
     """Logout user"""

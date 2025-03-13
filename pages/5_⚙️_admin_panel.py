@@ -24,7 +24,7 @@ init_auth()
 
 # Check authentication before showing ANY content
 if not check_auth():
-    st.stop()  # Stop execution if not authenticated
+    st.stop()
 
 # Only show the admin panel content if authenticated
 st.title("Admin Panel")
