@@ -15,22 +15,33 @@ def init_auth():
 
 def check_auth():
     """Check if user is authenticated"""
-    if 'user' not in st.session_state:
-        st.warning("Please log in to access this page")
-        st.stop()
-    
-    try:
-        # Try to get user to verify token
-        supabase = init_connection()
-        if supabase:
-            supabase.auth.get_user()
-        else:
-            st.error("Failed to connect to database")
-            st.stop()
-    except:
-        # If token verification fails, clear session and redirect
-        del st.session_state['user']
-        st.rerun()
+    if not st.session_state.authenticated:
+        # Show login form
+        with st.form("login_form"):
+            st.subheader("Login")
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Login")
+            
+            if submit:
+                try:
+                    supabase = init_connection()
+                    response = supabase.auth.sign_in_with_password({
+                        "email": email,
+                        "password": password
+                    })
+                    st.session_state.authenticated = True
+                    st.session_state['user'] = response.user
+                    st.session_state['access_token'] = response.session.access_token
+                    st.session_state['refresh_token'] = response.session.refresh_token
+                    st.success("Login successful!")
+                    st.rerun()
+                    return True
+                except Exception as e:
+                    st.error("Invalid credentials")
+                    return False
+        return False
+    return True
 
 def show_login():
     """Show login form"""
