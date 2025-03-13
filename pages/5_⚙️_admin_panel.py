@@ -22,8 +22,13 @@ import time
 # Initialize authentication
 init_auth()
 
-# Check authentication before showing content
-check_auth()
+# Check authentication before showing ANY content
+if not check_auth():
+    st.error("Please log in to access the admin panel")
+    st.stop()  # Stop execution if not authenticated
+
+# Only show the admin panel content if authenticated
+st.title("Admin Panel")
 
 # Add this at the start of your admin panel, run once, then remove it
 if st.sidebar.checkbox("Create Initial Admin"):
@@ -42,7 +47,10 @@ if st.sidebar.checkbox("Create Initial Admin"):
             except Exception as e:
                 st.error(f"Error creating admin: {str(e)}")
 
-st.title("Admin Panel")
+# Add logout button in sidebar
+if st.sidebar.button("Logout"):
+    st.session_state.authenticated = False
+    st.rerun()
 
 # Admin sections
 tab1, tab2, tab3 = st.tabs([
