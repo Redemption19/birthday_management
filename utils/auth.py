@@ -16,6 +16,9 @@ def init_auth():
 def check_auth():
     """Check if user is authenticated"""
     if not st.session_state.authenticated:
+        # Show message before login form
+        st.error("Please log in to access the admin panel")
+        
         # Show login form
         with st.form("login_form"):
             st.subheader("Login")
