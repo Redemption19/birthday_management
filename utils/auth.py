@@ -40,12 +40,16 @@ def check_auth():
                     st.session_state['access_token'] = response.session.access_token
                     st.session_state['refresh_token'] = response.session.refresh_token
                     st.success("Login successful!")
+                    time.sleep(0.5)  # Small delay to ensure state is updated
+                    st.experimental_rerun()  # This will clear the page and reload with admin content
                     return True
                 except Exception as e:
                     st.error("Invalid credentials")
                     return False
         return False
-    return True
+    else:
+        # If already authenticated, just return True without showing login form
+        return True
 
 def show_login():
     """Show login form"""
