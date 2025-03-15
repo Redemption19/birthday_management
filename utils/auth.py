@@ -16,40 +16,11 @@ def init_auth():
 
 def check_auth():
     """Check if user is authenticated"""
-    if not st.session_state.authenticated:
-        # Show message before login form
-        st.error("Please log in to access the admin panel")
-        
-        # Show login form
-        with st.form("login_form"):
-            st.subheader("Login")
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            submit = st.form_submit_button("Login")
-            
-            if submit:
-                try:
-                    supabase = init_connection()
-                    response = supabase.auth.sign_in_with_password({
-                        "email": email,
-                        "password": password
-                    })
-                    # Update session state
-                    st.session_state.authenticated = True
-                    st.session_state['user'] = response.user
-                    st.session_state['access_token'] = response.session.access_token
-                    st.session_state['refresh_token'] = response.session.refresh_token
-                    st.success("Login successful!")
-                    time.sleep(0.5)  # Small delay to ensure state is updated
-                    st.experimental_rerun()  # This will clear the page and reload with admin content
-                    return True
-                except Exception as e:
-                    st.error("Invalid credentials")
-                    return False
-        return False
-    else:
-        # If already authenticated, just return True without showing login form
+    # If already authenticated, return True
+    if st.session_state.authenticated:
         return True
+    # If not authenticated, just return False and let main.py handle the login form
+    return False
 
 def show_login():
     """Show login form"""
@@ -64,20 +35,23 @@ def show_login():
 
 def try_login(email, password):
     """Attempt to login user"""
-    supabase = init_connection()
     try:
+        supabase = init_connection()
         response = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
         })
-        st.session_state['authenticated'] = True
+        # Update session state
+        st.session_state.authenticated = True
         st.session_state['user'] = response.user
         st.session_state['access_token'] = response.session.access_token
         st.session_state['refresh_token'] = response.session.refresh_token
         st.success("Login successful!")
+        time.sleep(0.5)
+        st.rerun()
         return True
     except Exception as e:
-        st.error(f"Login failed: {str(e)}")
+        st.error("Invalid credentials")
         return False
 
 def logout():
