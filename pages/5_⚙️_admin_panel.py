@@ -52,11 +52,12 @@ if st.sidebar.button("Logout"):
     st.session_state.authenticated = False
     st.rerun()
 
-# Admin sections
-tab1, tab2, tab3 = st.tabs([
+# Admin sections - reorder the tabs
+tab1, tab2, tab3, tab4 = st.tabs([
     "Member Management",
     "Contribution Management",
-    "Department Management"
+    "Department Management",
+    "User Management"  # Moved to last tab
 ])
 
 with tab1:
@@ -308,9 +309,18 @@ with tab1:
     st.subheader("Existing Members")
     # Get fresh data after any changes
     members = get_youth_members()
+    departments = get_departments()  # Get departments for mapping
+
     if members:
+        # Create department mapping dictionary
+        dept_mapping = {dept['id']: dept['name'] for dept in departments}
+        
+        # Convert to DataFrame and map departments
         df = pd.DataFrame(members)
-        df['department'] = df['department_id'].apply(lambda x: dept_options.get(x, 'No Department'))
+        # Map department_id to department name using the mapping
+        df['department'] = df['department_id'].map(dept_mapping)
+        
+        # Create display DataFrame with selected columns
         display_df = df[['full_name', 'birthday', 'department', 'phone_number', 'email']]
         display_df.columns = ['Name', 'Birthday', 'Department', 'Phone', 'Email']
         
@@ -481,30 +491,6 @@ with tab2:
         st.info("No contributions found in the database")
 
 with tab3:
-    st.header("User Management")
-    
-    # Create new user section
-    st.subheader("Create New User")
-    with st.form("create_user"):
-        new_email = st.text_input("Email")
-        new_password = st.text_input("Password", type="password")
-        confirm_password = st.text_input("Confirm Password", type="password")
-        
-        if st.form_submit_button("Create User"):
-            if new_password != confirm_password:
-                st.error("Passwords do not match")
-            else:
-                supabase = init_connection()
-                try:
-                    response = supabase.auth.admin.create_user({
-                        "email": new_email,
-                        "password": new_password,
-                        "email_confirm": True
-                    })
-                    st.success("User created successfully!")
-                except Exception as e:
-                    st.error(f"Error creating user: {str(e)}")
-
     st.header("Department Management")
     
     # Create two columns for add/edit
@@ -579,4 +565,29 @@ with tab3:
         dept_df.columns = ['Department Name', 'Description']
         st.dataframe(dept_df, use_container_width=True)
     else:
-        st.info("No departments have been created yet") 
+        st.info("No departments have been created yet")
+
+with tab4:  # New last tab for User Management
+    st.header("User Management")
+    
+    # Create new user section
+    st.subheader("Create New User")
+    with st.form("create_user"):
+        new_email = st.text_input("Email")
+        new_password = st.text_input("Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        
+        if st.form_submit_button("Create User"):
+            if new_password != confirm_password:
+                st.error("Passwords do not match")
+            else:
+                supabase = init_connection()
+                try:
+                    response = supabase.auth.admin.create_user({
+                        "email": new_email,
+                        "password": new_password,
+                        "email_confirm": True
+                    })
+                    st.success("User created successfully!")
+                except Exception as e:
+                    st.error(f"Error creating user: {str(e)}") 
