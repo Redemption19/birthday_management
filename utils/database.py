@@ -246,4 +246,36 @@ def check_users_exist():
         return len(response.data) > 0
     except Exception as e:
         print(f"Error checking users table: {str(e)}")
-        return True  # Assume users exist if we can't check 
+        return True  # Assume users exist if we can't check
+
+def add_email_recipient(email):
+    """Add new email recipient"""
+    try:
+        supabase = init_connection()
+        response = supabase.table('email_recipients').insert({
+            'email': email
+        }).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error adding email recipient: {str(e)}")
+        return False
+
+def get_email_recipients():
+    """Get all email recipients"""
+    try:
+        supabase = init_connection()
+        response = supabase.table('email_recipients').select('*').execute()
+        return response.data
+    except Exception as e:
+        st.error(f"Error fetching email recipients: {str(e)}")
+        return []
+
+def delete_email_recipient(email):
+    """Delete email recipient"""
+    try:
+        supabase = init_connection()
+        response = supabase.table('email_recipients').delete().eq('email', email).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error deleting email recipient: {str(e)}")
+        return False 

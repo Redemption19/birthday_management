@@ -11,10 +11,13 @@ from utils.database import (
     add_department,
     update_department,
     delete_department,
-    get_contributions
+    get_contributions,
+    get_email_recipients,
+    add_email_recipient,
+    delete_email_recipient
 )
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 import io
 import time
@@ -53,11 +56,12 @@ if st.sidebar.button("Logout"):
     st.rerun()
 
 # Admin sections - reorder the tabs
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Member Management",
     "Contribution Management",
     "Department Management",
-    "User Management"  # Moved to last tab
+    "User Management",
+    "Birthday Notifications"  # New tab
 ])
 
 with tab1:
@@ -590,4 +594,535 @@ with tab4:  # New last tab for User Management
                     })
                     st.success("User created successfully!")
                 except Exception as e:
-                    st.error(f"Error creating user: {str(e)}") 
+                    st.error(f"Error creating user: {str(e)}")
+
+# Add the new Birthday Notifications tab
+with tab5:
+    st.header("Birthday Notification Settings")
+    
+    # Email Recipients Management
+    st.subheader("📧 Manage Notification Recipients")
+    
+    # Create columns for the email management
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Add new email recipient
+        with st.form("add_email_recipient"):
+            new_email = st.text_input("Add Email Recipient")
+            submit = st.form_submit_button("Add Recipient")
+            
+            if submit and new_email:
+                # Validate email format
+                if not re.match(r"[^@]+@[^@]+\.[^@]+", new_email):
+                    st.error("Please enter a valid email address!")
+                else:
+                    # Get existing recipients
+                    recipients = get_email_recipients()
+                    existing_emails = [r['email'] for r in recipients]
+                    
+                    # Check if email already exists
+                    if new_email in existing_emails:
+                        st.error("This email is already in the list!")
+                    else:
+                        # Add new email to database
+                        try:
+                            if add_email_recipient(new_email):
+                                st.success(f"Added {new_email} to recipients!")
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"Error adding recipient: {str(e)}")
+
+    with col2:
+        # Display and manage existing recipients
+        st.subheader("Current Recipients")
+        recipients = get_email_recipients()
+        
+        if recipients:
+            for recipient in recipients:
+                col_email, col_delete = st.columns([3, 1])
+                with col_email:
+                    st.text(recipient['email'])
+                with col_delete:
+                    if st.button("🗑️", key=f"delete_{recipient['email']}"):
+                        try:
+                            if delete_email_recipient(recipient['email']):
+                                st.success(f"Removed {recipient['email']} from recipients!")
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"Error removing recipient: {str(e)}")
+        else:
+            st.info("No recipients configured yet.")
+
+    # Email Testing and Birthday Checks
+    st.markdown("---")
+    st.subheader("🧪 Test Birthday Email System")
+    
+    test_col1, test_col2 = st.columns(2)
+    
+    with test_col1:
+        if st.button("📧 Send Test Birthday Email"):
+            try:
+                # Get email recipients
+                recipients = get_email_recipients()
+                if not recipients:
+                    st.error("Please add at least one email recipient first!")
+                else:
+                    # Get a sample member and departments for testing
+                    members = get_youth_members()
+                    departments = get_departments()
+                    dept_mapping = {dept['id']: dept['name'] for dept in departments}
+                    
+                    if members:
+                        test_member = members[0]  # Use the first member for testing
+                        # Get department name from mapping
+                        department_name = dept_mapping.get(test_member['department_id'], 'No Department')
+                        
+                        # Format the test email
+                        test_body = f"""
+                        <html>
+                        <body style="font-family: Arial, sans-serif;">
+                            <h2>🎂 Birthday Notification Test</h2>
+                            <p>This is a test email from your Birthday Reminder System.</p>
+                            <p>The following member would be notified if it were their birthday:</p>
+                            <div style="padding: 15px; background-color: #f8f9fa; border-radius: 5px; margin: 10px 0;">
+                                <p><strong>Name:</strong> {test_member['full_name']}</p>
+                                <p><strong>Birthday:</strong> {test_member['birthday']}</p>
+                                <p><strong>Department:</strong> {department_name}</p>
+                            </div>
+                            <p>If you received this email, your notification system is working correctly! 🎉</p>
+                            <p>Best regards,<br>Birthday Reminder System</p>
+                        </body>
+                        </html>
+                        """
+                        
+                        from utils.email_service import send_birthday_email
+                        recipient_emails = [r['email'] for r in recipients]
+                        
+                        success = send_birthday_email(
+                            recipients=recipient_emails,
+                            subject="🎉 Birthday Reminder System - Test Email",
+                            body=test_body
+                        )
+                        
+                        if success:
+                            st.success("Test email sent successfully! ✅")
+                            st.info(f"Email sent to: {', '.join(recipient_emails)}")
+                        else:
+                            st.error("Failed to send test email")
+                    else:
+                        st.error("No members found in the database for testing")
+            except Exception as e:
+                st.error(f"Error sending test email: {str(e)}")
+
+    with test_col2:
+        if st.button("🔍 Check Email Configuration"):
+            try:
+                # Display current email settings
+                st.info("Checking email configuration...")
+                
+                # Check SMTP settings
+                smtp_server = st.secrets["email"]["smtp_server"]
+                smtp_port = st.secrets["email"]["smtp_port"]
+                sender_email = st.secrets["email"]["sender_email"]
+                
+                st.write("📧 SMTP Configuration:")
+                st.write(f"- Server: {smtp_server}")
+                st.write(f"- Port: {smtp_port}")
+                st.write(f"- Sender: {sender_email}")
+                
+                # Check recipients
+                recipients = get_email_recipients()
+                if recipients:
+                    st.write("📫 Configured Recipients:")
+                    for recipient in recipients:
+                        st.write(f"- {recipient['email']}")
+                else:
+                    st.warning("No email recipients configured")
+                
+            except Exception as e:
+                st.error(f"Error checking email configuration: {str(e)}")
+
+    # Upcoming Birthdays Display
+    st.markdown("---")
+    st.subheader("📅 Upcoming Birthdays")
+    
+    try:
+        members = get_youth_members()
+        departments = get_departments()
+        dept_mapping = {dept['id']: dept['name'] for dept in departments}
+        
+        if members:
+            today = datetime.now()
+            upcoming_birthdays = []
+            
+            for member in members:
+                if member.get('birthday'):
+                    # Convert DD/MM to datetime for comparison
+                    day, month = member['birthday'].split('/')
+                    bday_this_year = datetime(today.year, int(month), int(day))
+                    
+                    # If birthday has passed this year, look at next year
+                    if bday_this_year < today:
+                        bday_this_year = datetime(today.year + 1, int(month), int(day))
+                    
+                    # Calculate days until birthday
+                    days_until = (bday_this_year.date() - today.date()).days
+                    
+                    if 0 <= days_until <= 30:
+                        # Calculate weeks and remaining days
+                        weeks = days_until // 7
+                        remaining_days = days_until % 7
+                        
+                        upcoming_birthdays.append({
+                            'name': member['full_name'],
+                            'birthday': member['birthday'],
+                            'days_until': days_until,
+                            'weeks': weeks,
+                            'remaining_days': remaining_days,
+                            'department': dept_mapping.get(member['department_id'], 'No Department')
+                        })
+            
+            if upcoming_birthdays:
+                # Sort by days until birthday
+                upcoming_birthdays.sort(key=lambda x: x['days_until'])
+                
+                # Create two columns for the birthday cards
+                left_col, right_col = st.columns(2)
+                
+                # Split birthdays into two lists
+                total_birthdays = len(upcoming_birthdays)
+                mid_point = (total_birthdays + 1) // 2
+                
+                # Process left column
+                with left_col:
+                    for birthday in upcoming_birthdays[:mid_point]:
+                        days = birthday['days_until']
+                        
+                        if days == 0:
+                            st.markdown(
+                                f"""
+                                <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
+                                        background-color: #4c1d95; border: 1px solid #6d28d9; color: white;">
+                                    <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                        🎂 Today is {birthday['name']}'s Birthday!
+                                    </div>
+                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                        Department: {birthday['department']}
+                                    </div>
+                                    <div style="color: #818cf8; font-weight: 600; margin: 0.5rem 0;">
+                                        Send them your best wishes! 🎉
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            countdown_text = []
+                            if birthday['weeks'] > 0:
+                                countdown_text.append(f"{birthday['weeks']} {'week' if birthday['weeks'] == 1 else 'weeks'}")
+                            if birthday['remaining_days'] > 0:
+                                countdown_text.append(f"{birthday['remaining_days']} {'day' if birthday['remaining_days'] == 1 else 'days'}")
+                            
+                            countdown = " and ".join(countdown_text) if countdown_text else "Today!"
+                            
+                            st.markdown(
+                                f"""
+                                <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
+                                        background-color: #1e1b4b; border: 1px solid #312e81; color: white;">
+                                    <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                        🎈 {birthday['name']}
+                                    </div>
+                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                        Birthday: {birthday['birthday']}
+                                    </div>
+                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                        Department: {birthday['department']}
+                                    </div>
+                                    <div style="color: #818cf8; font-weight: 600; margin: 0.5rem 0;">
+                                        Countdown: {countdown}
+                                    </div>
+                                    <div style="color: #6366f1; font-size: 0.875rem; margin-top: 0.25rem;">
+                                        ({days} {'day' if days == 1 else 'days'} total)
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                
+                # Process right column
+                with right_col:
+                    for birthday in upcoming_birthdays[mid_point:]:
+                        days = birthday['days_until']
+                        
+                        if days == 0:
+                            st.markdown(
+                                f"""
+                                <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
+                                        background-color: #4c1d95; border: 1px solid #6d28d9; color: white;">
+                                    <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                        🎂 Today is {birthday['name']}'s Birthday!
+                                    </div>
+                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                        Department: {birthday['department']}
+                                    </div>
+                                    <div style="color: #818cf8; font-weight: 600; margin: 0.5rem 0;">
+                                        Send them your best wishes! 🎉
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            countdown_text = []
+                            if birthday['weeks'] > 0:
+                                countdown_text.append(f"{birthday['weeks']} {'week' if birthday['weeks'] == 1 else 'weeks'}")
+                            if birthday['remaining_days'] > 0:
+                                countdown_text.append(f"{birthday['remaining_days']} {'day' if birthday['remaining_days'] == 1 else 'days'}")
+                            
+                            countdown = " and ".join(countdown_text) if countdown_text else "Today!"
+                            
+                            st.markdown(
+                                f"""
+                                <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
+                                        background-color: #1e1b4b; border: 1px solid #312e81; color: white;">
+                                    <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                        🎈 {birthday['name']}
+                                    </div>
+                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                        Birthday: {birthday['birthday']}
+                                    </div>
+                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                        Department: {birthday['department']}
+                                    </div>
+                                    <div style="color: #818cf8; font-weight: 600; margin: 0.5rem 0;">
+                                        Countdown: {countdown}
+                                    </div>
+                                    <div style="color: #6366f1; font-size: 0.875rem; margin-top: 0.25rem;">
+                                        ({days} {'day' if days == 1 else 'days'} total)
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+            else:
+                st.info("No upcoming birthdays in the next 30 days")
+        else:
+            st.info("No members found in the database")
+    except Exception as e:
+        st.error(f"Error displaying upcoming birthdays: {str(e)}")
+
+    # Add this in the test section
+    with test_col1:
+        st.markdown("### Test Reminder Schedule")
+        if st.button("🔄 Test Reminder Schedule"):
+            try:
+                from utils.email_service import check_and_send_birthday_reminders
+                message, success = check_and_send_birthday_reminders()
+                
+                if success:
+                    st.success(message)
+                    # Show what would be sent
+                    members = get_youth_members()
+                    today = datetime.now()
+                    
+                    st.write("📅 Reminder Schedule Preview:")
+                    for member in members:
+                        if member.get('birthday'):
+                            day, month = member['birthday'].split('/')
+                            bday_this_year = datetime(today.year, int(month), int(day))
+                            if bday_this_year < today:
+                                bday_this_year = datetime(today.year + 1, int(month), int(day))
+                            
+                            days_until = (bday_this_year.date() - today.date()).days
+                            
+                            if 0 <= days_until <= 3:
+                                st.info(f"""
+                                    {member['full_name']} - {member['birthday']}
+                                    - Days until birthday: {days_until}
+                                    - Will send reminders:
+                                        • Morning (9 AM)
+                                        • Afternoon (2 PM)
+                                """)
+                else:
+                    st.error(message)
+            except Exception as e:
+                st.error(f"Error testing reminder schedule: {str(e)}")
+
+    # Add this after your existing birthday notifications section
+    st.markdown("---")
+    st.subheader("🔄 Automation Monitor")
+
+    monitor_col1, monitor_col2 = st.columns(2)
+
+    with monitor_col1:
+        st.markdown("### 📊 System Status")
+        
+        # Check current time and next run times
+        current_time = datetime.now()
+        next_morning = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        next_afternoon = datetime.now().replace(hour=14, minute=0, second=0, microsecond=0)
+        
+        if current_time > next_morning:
+            next_morning += timedelta(days=1)
+        if current_time > next_afternoon:
+            next_afternoon += timedelta(days=1)
+        
+        next_run = next_morning if next_morning < next_afternoon else next_afternoon
+        
+        # Display automation status
+        st.markdown("""
+            <style>
+            .status-box {
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin: 0.5rem 0;
+                background-color: #1e1b4b;
+                border: 1px solid #312e81;
+            }
+            .time-info {
+                color: #c7d2fe;
+                margin: 0.5rem 0;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+        
+        st.markdown(f"""
+            <div class="status-box">
+                <div class="time-info">
+                    🕒 Current Time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}
+                </div>
+                <div class="time-info">
+                    ⏰ Next Morning Check: {next_morning.strftime('%Y-%m-%d %H:%M:%S')}
+                </div>
+                <div class="time-info">
+                    ⏰ Next Afternoon Check: {next_afternoon.strftime('%Y-%m-%d %H:%M:%S')}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with monitor_col2:
+        st.markdown("### 📝 Recent Activity")
+        
+        # Show last check time and status
+        if 'last_email_check' in st.session_state and st.session_state.last_email_check:
+            st.info(f"Last Check: {st.session_state.last_email_check.strftime('%Y-%m-%d %H:%M:%S')}")
+        else:
+            st.warning("No checks recorded yet")
+            
+        if 'last_email_status' in st.session_state and st.session_state.last_email_status:
+            if "✅" in st.session_state.last_email_status:
+                st.success(st.session_state.last_email_status)
+            else:
+                st.error(st.session_state.last_email_status)
+        
+        # Add a manual test button
+        if st.button("🧪 Run Test Check Now"):
+            try:
+                from utils.email_service import check_and_send_birthday_reminders
+                message, success = check_and_send_birthday_reminders()
+                
+                # Update session state
+                st.session_state.last_email_check = datetime.now()
+                st.session_state.last_email_status = f"{'✅' if success else '❌'} {message}"
+                
+                if success:
+                    st.success(f"Test completed: {message}")
+                else:
+                    st.error(f"Test failed: {message}")
+                    
+                # Show upcoming birthdays that would trigger notifications
+                members = get_youth_members()
+                today = datetime.now()
+                upcoming = []
+                
+                for member in members:
+                    if member.get('birthday'):
+                        day, month = member['birthday'].split('/')
+                        bday_this_year = datetime(today.year, int(month), int(day))
+                        if bday_this_year < today:
+                            bday_this_year = datetime(today.year + 1, int(month), int(day))
+                        
+                        days_until = (bday_this_year.date() - today.date()).days
+                        if 0 <= days_until <= 3:
+                            upcoming.append({
+                                'name': member['full_name'],
+                                'birthday': member['birthday'],
+                                'days': days_until
+                            })
+                
+                if upcoming:
+                    st.markdown("#### Upcoming Birthdays That Will Trigger Notifications:")
+                    for person in sorted(upcoming, key=lambda x: x['days']):
+                        st.info(f"""
+                            👤 {person['name']}
+                            📅 Birthday: {person['birthday']}
+                            ⏳ {'Today!' if person['days'] == 0 else f'In {person["days"]} days'}
+                        """)
+                else:
+                    st.info("No upcoming birthdays in the next 3 days")
+                    
+            except Exception as e:
+                st.error(f"Error running test: {str(e)}")
+
+    # Add verification checklist
+    st.markdown("---")
+    st.markdown("### ✅ System Verification Checklist")
+    
+    # Check email configuration
+    email_config_ok = all(key in st.secrets.get("email", {}) 
+                         for key in ["smtp_server", "smtp_port", "sender_email", "sender_password"])
+    
+    # Check if we have recipients
+    recipients = get_email_recipients()
+    has_recipients = bool(recipients)
+    
+    # Check if we have members with birthdays
+    members = get_youth_members()
+    has_members = bool(members)
+    has_birthdays = False
+    if members:
+        has_birthdays = any(member.get('birthday') for member in members)
+    
+    checklist_items = {
+        "Email Configuration": {
+            "status": email_config_ok,
+            "message": "Email settings properly configured" if email_config_ok else "Missing email configuration"
+        },
+        "Email Recipients": {
+            "status": has_recipients,
+            "message": f"{len(recipients)} recipient(s) configured" if has_recipients else "No email recipients added"
+        },
+        "Member Data": {
+            "status": has_members,
+            "message": f"{len(members)} member(s) in database" if has_members else "No members in database"
+        },
+        "Birthday Data": {
+            "status": has_birthdays,
+            "message": "Members with birthdays found" if has_birthdays else "No birthday data available"
+        }
+    }
+    
+    for item, details in checklist_items.items():
+        if details["status"]:
+            st.success(f"✅ {item}: {details['message']}")
+        else:
+            st.error(f"❌ {item}: {details['message']}")
+
+    # Add help information
+    st.markdown("---")
+    st.markdown("### ℹ️ How Automation Works")
+    st.info("""
+        The birthday reminder system:
+        1. Checks for birthdays twice daily (9 AM and 2 PM)
+        2. Sends reminders for birthdays today through 3 days ahead
+        3. Requires the application to be running
+        4. Uses Gmail SMTP for sending emails
+        5. Prevents duplicate notifications
+        
+        To ensure it's working:
+        - Keep the application running
+        - Check the status monitor above
+        - Verify all checklist items are green
+        - Use the test button to verify email delivery
+    """) 

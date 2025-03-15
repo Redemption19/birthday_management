@@ -2,10 +2,35 @@ import streamlit as st
 from utils.auth import init_auth, check_auth, logout, try_login, try_reset_password, is_valid_email
 from utils.database import init_connection, check_users_exist, get_youth_members, get_contributions, get_departments, get_monthly_birthdays
 from utils.auth import check_authentication
-from datetime import datetime
+from datetime import datetime, timedelta
+from utils.email_service import check_and_send_birthday_reminders
 
 # Initialize authentication
 init_auth()
+
+# Initialize scheduler state
+if 'last_email_check' not in st.session_state:
+    st.session_state.last_email_check = None
+if 'last_email_status' not in st.session_state:
+    st.session_state.last_email_status = None
+
+# Run birthday reminder check if authenticated
+if st.session_state.authenticated:
+    current_time = datetime.now()
+    current_hour = current_time.hour
+    current_minute = current_time.minute
+    
+    # Check if it's time to send reminders (9 AM or 2 PM)
+    if current_hour in [9, 14] and 0 <= current_minute < 5:
+        # Only send if we haven't sent in the last 4 minutes
+        if (st.session_state.last_email_check is None or 
+            current_time - st.session_state.last_email_check > timedelta(minutes=4)):
+            try:
+                message, success = check_and_send_birthday_reminders()
+                st.session_state.last_email_check = current_time
+                st.session_state.last_email_status = f"{'✅' if success else '❌'} {message}"
+            except Exception as e:
+                st.session_state.last_email_status = f"❌ Error: {str(e)}"
 
 # Page config
 st.set_page_config(
@@ -149,6 +174,28 @@ if st.session_state.authenticated:
                 {st.session_state.user.role if hasattr(st.session_state.user, 'role') else 'User'}
             </div>
         """, unsafe_allow_html=True)
+        
+        # Add birthday reminder status
+        st.markdown("---")
+        st.markdown("#### 🎂 Birthday Reminders")
+        st.markdown("""
+            Scheduled times:
+            - 🌅 9:00 AM
+            - 🌇 2:00 PM
+        """)
+        
+        if st.session_state.last_email_check:
+            st.markdown("**Last Check:**")
+            st.info(st.session_state.last_email_check.strftime("%Y-%m-%d %H:%M:%S"))
+            
+        if st.session_state.last_email_status:
+            st.markdown("**Status:**")
+            if "✅" in st.session_state.last_email_status:
+                st.success(st.session_state.last_email_status)
+            elif "❌" in st.session_state.last_email_status:
+                st.error(st.session_state.last_email_status)
+            else:
+                st.info(st.session_state.last_email_status)
         
         # Add some space before logout button
         st.write("")
@@ -318,6 +365,28 @@ try:
     total_contributions = sum(float(contrib['amount']) for contrib in all_contributions) if all_contributions else 0
     total_departments = len(all_departments) if all_departments else 0
     total_birthdays = len(monthly_birthdays) if monthly_birthdays else 0
+
+    # Add this to your data fetching section
+    upcoming_birthdays = []
+    today = datetime.now()
+    if all_members:
+        for member in all_members:
+            if member.get('birthday'):
+                day, month = member['birthday'].split('/')
+                bday_this_year = datetime(today.year, int(month), int(day))
+                
+                if bday_this_year < today:
+                    bday_this_year = datetime(today.year + 1, int(month), int(day))
+                
+                days_until = (bday_this_year.date() - today.date()).days
+                
+                if 0 <= days_until <= 3:
+                    upcoming_birthdays.append({
+                        'name': member['full_name'],
+                        'birthday': member['birthday'],
+                        'days': days_until
+                    })
+
 except Exception as e:
     st.error(f"Error fetching data: {str(e)}")
     total_members = total_contributions = total_departments = total_birthdays = 0
@@ -360,6 +429,24 @@ with col4:
             <div class="metric-label">Birthdays This Month</div>
         </div>
     """, unsafe_allow_html=True)
+
+# Add this after your metrics columns
+if upcoming_birthdays:
+    st.markdown("---")
+    st.markdown("### 🎂 Upcoming Birthdays")
+    
+    birthday_cols = st.columns(len(upcoming_birthdays))
+    for idx, birthday in enumerate(sorted(upcoming_birthdays, key=lambda x: x['days'])):
+        with birthday_cols[idx]:
+            st.markdown(f"""
+                <div class="metric-container" style="background-color: #4c1d95;">
+                    <div class="metric-value">🎈 {birthday['name']}</div>
+                    <div class="metric-label">
+                        {birthday['birthday']}<br>
+                        {'Today!' if birthday['days'] == 0 else f'In {birthday["days"]} days'}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
