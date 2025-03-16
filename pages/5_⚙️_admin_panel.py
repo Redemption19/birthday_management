@@ -747,6 +747,39 @@ with tab5:
     st.markdown("---")
     st.subheader("📅 Upcoming Birthdays")
     
+    # Add this CSS and JavaScript at the beginning of the Upcoming Birthdays section
+    st.markdown("""
+        <style>
+        .countdown-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+        .countdown-box {
+            background-color: white;
+            color: #1e1b4b;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            min-width: 2.5rem;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .countdown-separator {
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .countdown-label {
+            color: #c7d2fe;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 0.25rem;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     try:
         members = get_youth_members()
         departments = get_departments()
@@ -796,115 +829,133 @@ with tab5:
                 
                 # Process left column
                 with left_col:
-                    for birthday in upcoming_birthdays[:mid_point]:
-                        days = birthday['days_until']
+                    for idx, birthday in enumerate(upcoming_birthdays[:mid_point]):
+                        # Calculate target date
+                        day, month = birthday['birthday'].split('/')
+                        target_date = datetime.now().replace(month=int(month), day=int(day))
                         
-                        if days == 0:
-                            st.markdown(
-                                f"""
-                                <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
-                                        background-color: #4c1d95; border: 1px solid #6d28d9; color: white;">
-                                    <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
-                                        🎂 Today is {birthday['name']}'s Birthday!
+                        # If birthday has passed this year, look at next year
+                        if target_date.date() < datetime.now().date():
+                            target_date = target_date.replace(year=target_date.year + 1)
+                        
+                        # Calculate time remaining
+                        days = (target_date.date() - datetime.now().date()).days
+                        
+                        # Get the day name
+                        day_name = target_date.strftime("%A")
+                        
+                        st.markdown(
+                            f"""
+                            <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
+                                    background-color: #1e1b4b; border: 1px solid #312e81; color: white;">
+                                <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                    🎈 {birthday['name']}
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                            Birthday: {birthday['birthday']} <span style="color: #cf173d; font-weight: bold; font-style: italic;">({day_name})</span>
+                                        </div>
+                                        <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                            Department: {birthday['department']}
+                                        </div>
+                                        <div style="color: #6366f1; font-size: 0.875rem; margin-top: 0.25rem;">
+                                            Total: {days} {'day' if days == 1 else 'days'}
+                                        </div>
                                     </div>
-                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
-                                        Department: {birthday['department']}
-                                    </div>
-                                    <div style="color: #818cf8; font-weight: 600; margin: 0.5rem 0;">
-                                        Send them your best wishes! 🎉
+                                    <div style="text-align: right; padding-left: 1rem;">
+                                        <div class="countdown-container">
+                                            <div>
+                                                <div class="countdown-box">{str(days).zfill(2)}</div>
+                                                <div class="countdown-label">Days</div>
+                                            </div>
+                                            <div class="countdown-separator">:</div>
+                                            <div>
+                                                <div class="countdown-box">00</div>
+                                                <div class="countdown-label">Hrs</div>
+                                            </div>
+                                            <div class="countdown-separator">:</div>
+                                            <div>
+                                                <div class="countdown-box">00</div>
+                                                <div class="countdown-label">Mins</div>
+                                            </div>
+                                            <div class="countdown-separator">:</div>
+                                            <div>
+                                                <div class="countdown-box">00</div>
+                                                <div class="countdown-label">Sec</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                        else:
-                            countdown_text = []
-                            if birthday['weeks'] > 0:
-                                countdown_text.append(f"{birthday['weeks']} {'week' if birthday['weeks'] == 1 else 'weeks'}")
-                            if birthday['remaining_days'] > 0:
-                                countdown_text.append(f"{birthday['remaining_days']} {'day' if birthday['remaining_days'] == 1 else 'days'}")
-                            
-                            countdown = " and ".join(countdown_text) if countdown_text else "Today!"
-                            
-                            st.markdown(
-                                f"""
-                                <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
-                                        background-color: #1e1b4b; border: 1px solid #312e81; color: white;">
-                                    <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
-                                        🎈 {birthday['name']}
-                                    </div>
-                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
-                                        Birthday: {birthday['birthday']}
-                                    </div>
-                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
-                                        Department: {birthday['department']}
-                                    </div>
-                                    <div style="color: #818cf8; font-weight: 600; margin: 0.5rem 0;">
-                                        Countdown: {countdown}
-                                    </div>
-                                    <div style="color: #6366f1; font-size: 0.875rem; margin-top: 0.25rem;">
-                                        ({days} {'day' if days == 1 else 'days'} total)
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
                 
                 # Process right column
                 with right_col:
-                    for birthday in upcoming_birthdays[mid_point:]:
-                        days = birthday['days_until']
+                    for idx, birthday in enumerate(upcoming_birthdays[mid_point:]):
+                        # Calculate target date
+                        day, month = birthday['birthday'].split('/')
+                        target_date = datetime.now().replace(month=int(month), day=int(day))
                         
-                        if days == 0:
-                            st.markdown(
-                                f"""
-                                <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
-                                        background-color: #4c1d95; border: 1px solid #6d28d9; color: white;">
-                                    <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
-                                        🎂 Today is {birthday['name']}'s Birthday!
+                        # If birthday has passed this year, look at next year
+                        if target_date.date() < datetime.now().date():
+                            target_date = target_date.replace(year=target_date.year + 1)
+                        
+                        # Calculate time remaining
+                        days = (target_date.date() - datetime.now().date()).days
+                        
+                        # Get the day name
+                        day_name = target_date.strftime("%A")
+                        
+                        st.markdown(
+                            f"""
+                            <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
+                                    background-color: #1e1b4b; border: 1px solid #312e81; color: white;">
+                                <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                    🎈 {birthday['name']}
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                            Birthday: {birthday['birthday']} <span style="color: #A78BFA; font-weight: bold; font-style: italic;">({day_name})</span>
+                                        </div>
+                                        <div style="color: #c7d2fe; margin: 0.25rem 0;">
+                                            Department: {birthday['department']}
+                                        </div>
+                                        <div style="color: #6366f1; font-size: 0.875rem; margin-top: 0.25rem;">
+                                            Total: {days} {'day' if days == 1 else 'days'}
+                                        </div>
                                     </div>
-                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
-                                        Department: {birthday['department']}
-                                    </div>
-                                    <div style="color: #818cf8; font-weight: 600; margin: 0.5rem 0;">
-                                        Send them your best wishes! 🎉
+                                    <div style="text-align: right; padding-left: 1rem;">
+                                        <div class="countdown-container">
+                                            <div>
+                                                <div class="countdown-box">{str(days).zfill(2)}</div>
+                                                <div class="countdown-label">Days</div>
+                                            </div>
+                                            <div class="countdown-separator">:</div>
+                                            <div>
+                                                <div class="countdown-box">00</div>
+                                                <div class="countdown-label">Hrs</div>
+                                            </div>
+                                            <div class="countdown-separator">:</div>
+                                            <div>
+                                                <div class="countdown-box">00</div>
+                                                <div class="countdown-label">Mins</div>
+                                            </div>
+                                            <div class="countdown-separator">:</div>
+                                            <div>
+                                                <div class="countdown-box">00</div>
+                                                <div class="countdown-label">Sec</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                        else:
-                            countdown_text = []
-                            if birthday['weeks'] > 0:
-                                countdown_text.append(f"{birthday['weeks']} {'week' if birthday['weeks'] == 1 else 'weeks'}")
-                            if birthday['remaining_days'] > 0:
-                                countdown_text.append(f"{birthday['remaining_days']} {'day' if birthday['remaining_days'] == 1 else 'days'}")
-                            
-                            countdown = " and ".join(countdown_text) if countdown_text else "Today!"
-                            
-                            st.markdown(
-                                f"""
-                                <div style="padding: 1.5rem; border-radius: 0.75rem; margin: 0.75rem 0; 
-                                        background-color: #1e1b4b; border: 1px solid #312e81; color: white;">
-                                    <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">
-                                        🎈 {birthday['name']}
-                                    </div>
-                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
-                                        Birthday: {birthday['birthday']}
-                                    </div>
-                                    <div style="color: #c7d2fe; margin: 0.25rem 0;">
-                                        Department: {birthday['department']}
-                                    </div>
-                                    <div style="color: #818cf8; font-weight: 600; margin: 0.5rem 0;">
-                                        Countdown: {countdown}
-                                    </div>
-                                    <div style="color: #6366f1; font-size: 0.875rem; margin-top: 0.25rem;">
-                                        ({days} {'day' if days == 1 else 'days'} total)
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
             else:
                 st.info("No upcoming birthdays in the next 30 days")
         else:
@@ -1125,4 +1176,13 @@ with tab5:
         - Check the status monitor above
         - Verify all checklist items are green
         - Use the test button to verify email delivery
-    """) 
+    """)
+
+
+# # Add auto-refresh to the page
+# st.markdown(
+#     """
+#     <meta http-equiv="refresh" content="1">
+#     """,
+#     unsafe_allow_html=True
+# ) 
