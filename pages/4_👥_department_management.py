@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+from utils.auth import is_admin  # Make sure this function exists in your auth.py
 
 # Define custom color scheme
 CUSTOM_COLORS = ['#FF7300', '#9B3192', '#57167E', '#007ED6']
@@ -254,31 +255,35 @@ else:
     
     # Display filtered members with column checking
     st.subheader("Filtered Members")
-    
-    # Get available columns
-    available_columns = []
-    display_names = []
-    
-    # Check each column and add if available
-    if 'full_name' in filtered_df.columns:
-        available_columns.append('full_name')
-        display_names.append('Name')
-    
-    if 'department_name' in filtered_df.columns:
-        available_columns.append('department_name')
-        display_names.append('Department')
-    
-    if 'birthday' in filtered_df.columns:
-        available_columns.append('birthday')
-        display_names.append('Birthday')
-    
-    if 'phone_number' in filtered_df.columns:
-        available_columns.append('phone_number')
-        display_names.append('Phone')
-    
-    if available_columns:
-        display_df = filtered_df[available_columns]
-        display_df.columns = display_names
-        st.dataframe(display_df, use_container_width=True)
+
+    # Check if user is admin
+    if is_admin():
+        # Get available columns
+        available_columns = []
+        display_names = []
+        
+        # Check each column and add if available
+        if 'full_name' in filtered_df.columns:
+            available_columns.append('full_name')
+            display_names.append('Name')
+        
+        if 'department_name' in filtered_df.columns:
+            available_columns.append('department_name')
+            display_names.append('Department')
+        
+        if 'birthday' in filtered_df.columns:
+            available_columns.append('birthday')
+            display_names.append('Birthday')
+        
+        if 'phone_number' in filtered_df.columns:
+            available_columns.append('phone_number')
+            display_names.append('Phone')
+        
+        if available_columns:
+            display_df = filtered_df[available_columns]
+            display_df.columns = display_names
+            st.dataframe(display_df, use_container_width=True)
+        else:
+            st.info("No member data available to display")
     else:
-        st.info("No member data available to display") 
+        st.warning("⚠️ You need administrator privileges to view detailed member information.") 

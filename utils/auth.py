@@ -46,6 +46,7 @@ def try_login(email, password):
         st.session_state['user'] = response.user
         st.session_state['access_token'] = response.session.access_token
         st.session_state['refresh_token'] = response.session.refresh_token
+        st.session_state.user_role = 'admin'  # Set this for admin users
         st.success("Login successful!")
         time.sleep(0.5)
         st.rerun()
@@ -89,6 +90,7 @@ def login():
             # TODO: Implement actual authentication logic
             if username == "admin" and password == "password":
                 st.session_state["authenticated"] = True
+                st.session_state.user_role = 'admin'  # Set this for admin users
                 return True
             else:
                 st.error("Invalid credentials")
@@ -163,4 +165,14 @@ def refresh_token():
     except Exception as e:
         st.error("Session expired. Please login again.")
         logout()
-        return False 
+        return False
+
+def is_admin():
+    """
+    Check if the current user has admin privileges.
+    Returns True if the user is an admin, False otherwise.
+    """
+    # Check if user is authenticated and has admin role
+    is_authenticated = st.session_state.get('authenticated', False)
+    user_role = st.session_state.get('user_role', 'none')
+    return is_authenticated and user_role == 'admin' 

@@ -274,6 +274,8 @@ if not st.session_state['authenticated']:
                         st.error("Please enter a valid email address")
                     else:
                         try_login(email, password)
+                        st.session_state.authenticated = True
+                        st.session_state.user_role = 'admin'
         
         # Forgot Password Column
         with col2:

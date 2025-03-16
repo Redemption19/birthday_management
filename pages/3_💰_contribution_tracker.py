@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.database import init_connection, get_contributions, get_youth_members
+from utils.auth import is_admin
 import pandas as pd
 from datetime import datetime, timedelta
 import plotly.express as px
@@ -126,27 +127,30 @@ if all_contributions:
                 st.plotly_chart(fig, use_container_width=True)
             
             with chart_col2:
-                # Top contributors bar chart
-                top_contributors = df.groupby('member_id').agg({
-                    'amount': 'sum',
-                    'youth_members': lambda x: x.iloc[0]['full_name']
-                }).nlargest(5, 'amount')
-                
-                fig = px.bar(
-                    top_contributors,
-                    x='youth_members',
-                    y='amount',
-                    title='Top 5 Contributors',
-                    labels={'amount': 'Amount (GH₵)', 'youth_members': 'Member'},
-                    color_discrete_sequence=['#BE61CA']
-                )
-                fig.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    yaxis_gridcolor='rgba(128,128,128,0.1)',
-                    showlegend=False,
-                    xaxis_tickangle=-45
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                if is_admin():
+                    # Top contributors bar chart
+                    top_contributors = df.groupby('member_id').agg({
+                        'amount': 'sum',
+                        'youth_members': lambda x: x.iloc[0]['full_name']
+                    }).nlargest(5, 'amount')
+                    
+                    fig = px.bar(
+                        top_contributors,
+                        x='youth_members',
+                        y='amount',
+                        title='Top 5 Contributors',
+                        labels={'amount': 'Amount (GH₵)', 'youth_members': 'Member'},
+                        color_discrete_sequence=['#BE61CA']
+                    )
+                    fig.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        yaxis_gridcolor='rgba(128,128,128,0.1)',
+                        showlegend=False,
+                        xaxis_tickangle=-45
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("⚠️ Top contributors information is only visible to administrators.")
             
             # Weekly contribution heatmap
             st.subheader("Weekly Contribution Pattern")
@@ -173,131 +177,143 @@ if all_contributions:
             
             # Detailed contribution records
             st.subheader("Contribution Records")
-            df['member_name'] = df['youth_members'].apply(lambda x: x['full_name'])
-            display_df = df[['member_name', 'amount', 'contribution_type', 'payment_date', 'week_number']]
-            display_df.columns = ['Member', 'Amount (GH₵)', 'Type', 'Date', 'Week']
-            st.dataframe(display_df, use_container_width=True)
+            if is_admin():
+                df['member_name'] = df['youth_members'].apply(lambda x: x['full_name'])
+                display_df = df[['member_name', 'amount', 'contribution_type', 'payment_date', 'week_number']]
+                display_df.columns = ['Member', 'Amount (GH₵)', 'Type', 'Date', 'Week']
+                st.dataframe(display_df, use_container_width=True)
+            else:
+                st.warning("⚠️ Detailed contribution records are only visible to administrators.")
 
             # Member Contribution Analysis
             st.subheader("Member Contribution Analysis")
-            selected_member = st.selectbox(
-                "Select Member",
-                options=[member['full_name'] for member in all_members]
-            )
+            if is_admin():
+                selected_member = st.selectbox(
+                    "Select Member",
+                    options=[member['full_name'] for member in all_members]
+                )
 
-            if selected_member:
-                member_contributions = df[df['member_name'] == selected_member]
-                
-                # Member metrics
-                total_contributed = member_contributions['amount'].sum()
-                contribution_count = len(member_contributions)
-                avg_contribution = total_contributed / contribution_count if contribution_count > 0 else 0
-                
-                metric_col1, metric_col2, metric_col3 = st.columns(3)
-                with metric_col1:
-                    st.metric("Total Contributed", f"GH₵{total_contributed:,.2f}")
-                with metric_col2:
-                    st.metric("Number of Contributions", contribution_count)
-                with metric_col3:
-                    st.metric("Average Contribution", f"GH₵{avg_contribution:,.2f}")
+                if selected_member:
+                    member_contributions = df[df['member_name'] == selected_member]
+                    
+                    # Member metrics
+                    total_contributed = member_contributions['amount'].sum()
+                    contribution_count = len(member_contributions)
+                    avg_contribution = total_contributed / contribution_count if contribution_count > 0 else 0
+                    
+                    metric_col1, metric_col2, metric_col3 = st.columns(3)
+                    with metric_col1:
+                        st.metric("Total Contributed", f"GH₵{total_contributed:,.2f}")
+                    with metric_col2:
+                        st.metric("Number of Contributions", contribution_count)
+                    with metric_col3:
+                        st.metric("Average Contribution", f"GH₵{avg_contribution:,.2f}")
+            else:
+                st.warning("⚠️ Member contribution analysis is only visible to administrators.")
 
             # Contribution Goals
             st.subheader("Contribution Goals")
-            goal_col1, goal_col2 = st.columns(2)
+            if is_admin():
+                goal_col1, goal_col2 = st.columns(2)
 
-            with goal_col1:
-                monthly_goal = st.number_input("Monthly Goal (GH₵)", min_value=0.0, step=100.0)
-                if monthly_goal > 0:
-                    current_month = datetime.now().month
-                    monthly_total = df[df['payment_date'].dt.month == current_month]['amount'].sum()
-                    progress = (monthly_total / monthly_goal) * 100
-                    st.progress(min(progress/100, 1.0))
-                    st.text(f"Progress: GH₵{monthly_total:,.2f} / GH₵{monthly_goal:,.2f} ({progress:.1f}%)")
+                with goal_col1:
+                    monthly_goal = st.number_input("Monthly Goal (GH₵)", min_value=0.0, step=100.0)
+                    if monthly_goal > 0:
+                        current_month = datetime.now().month
+                        monthly_total = df[df['payment_date'].dt.month == current_month]['amount'].sum()
+                        progress = (monthly_total / monthly_goal) * 100
+                        st.progress(min(progress/100, 1.0))
+                        st.text(f"Progress: GH₵{monthly_total:,.2f} / GH₵{monthly_goal:,.2f} ({progress:.1f}%)")
+            else:
+                st.warning("⚠️ Contribution goals management is only visible to administrators.")
+
+            # Defaulters Analysis
+            if contribution_type == "BIRTHDAY":
+                st.subheader("Birthday Contribution Analysis")
+                
+                # Get defaulters
+                current_month = datetime.now().month
+                current_year = datetime.now().year
+                
+                monthly_contributors = set(
+                    df[
+                        (df['contribution_type'] == 'BIRTHDAY') &
+                        (df['payment_date'].dt.month == current_month) &
+                        (df['payment_date'].dt.year == current_year)
+                    ]['member_id'].unique()
+                )
+                
+                defaulters = [
+                    member for member in all_members 
+                    if member['id'] not in monthly_contributors
+                ]
+                
+                # Create metrics for compliance
+                total_members = len(all_members)
+                defaulter_count = len(defaulters)
+                compliance_rate = ((total_members - defaulter_count) / total_members * 100) if total_members > 0 else 0
+                
+                metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+                with metrics_col1:
+                    st.metric("Total Members", total_members)
+                with metrics_col2:
+                    st.metric("Defaulters", defaulter_count)
+                with metrics_col3:
+                    st.metric("Compliance Rate", f"{compliance_rate:.1f}%")
+                
+                if defaulters:
+                    defaulter_df = pd.DataFrame(defaulters)
+                    
+                    # Defaulters by department
+                    dept_defaulters = defaulter_df['departments'].apply(lambda x: x['name'] if x else 'No Department').value_counts()
+                    fig = px.bar(
+                        x=dept_defaulters.index,
+                        y=dept_defaulters.values,
+                        title="Defaulters by Department",
+                        labels={'x': 'Department', 'y': 'Number of Defaulters'},
+                        color_discrete_sequence=['#F13C59']
+                    )
+                    fig.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        yaxis_gridcolor='rgba(128,128,128,0.1)',
+                        showlegend=False,
+                        xaxis_tickangle=-45
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Display defaulters list
+                    st.subheader("Defaulters List")
+                    display_df = defaulter_df[['full_name', 'phone_number']]
+                    display_df.columns = ['Name', 'Phone']
+                    st.dataframe(display_df, use_container_width=True)
+                else:
+                    st.success("No defaulters this month!")
         else:
             st.info("No contributions found for the selected criteria")
 
-        # Defaulters Analysis
-        if contribution_type == "BIRTHDAY":
-            st.subheader("Birthday Contribution Analysis")
-            
-            # Get defaulters
-            current_month = datetime.now().month
-            current_year = datetime.now().year
-            
-            monthly_contributors = set(
-                df[
-                    (df['contribution_type'] == 'BIRTHDAY') &
-                    (df['payment_date'].dt.month == current_month) &
-                    (df['payment_date'].dt.year == current_year)
-                ]['member_id'].unique()
-            )
-            
-            defaulters = [
-                member for member in all_members 
-                if member['id'] not in monthly_contributors
-            ]
-            
-            # Create metrics for compliance
-            total_members = len(all_members)
-            defaulter_count = len(defaulters)
-            compliance_rate = ((total_members - defaulter_count) / total_members * 100) if total_members > 0 else 0
-            
-            metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
-            with metrics_col1:
-                st.metric("Total Members", total_members)
-            with metrics_col2:
-                st.metric("Defaulters", defaulter_count)
-            with metrics_col3:
-                st.metric("Compliance Rate", f"{compliance_rate:.1f}%")
-            
-            if defaulters:
-                defaulter_df = pd.DataFrame(defaulters)
-                
-                # Defaulters by department
-                dept_defaulters = defaulter_df['departments'].apply(lambda x: x['name'] if x else 'No Department').value_counts()
-                fig = px.bar(
-                    x=dept_defaulters.index,
-                    y=dept_defaulters.values,
-                    title="Defaulters by Department",
-                    labels={'x': 'Department', 'y': 'Number of Defaulters'},
-                    color_discrete_sequence=['#F13C59']
-                )
-                fig.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    yaxis_gridcolor='rgba(128,128,128,0.1)',
-                    showlegend=False,
-                    xaxis_tickangle=-45
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Display defaulters list
-                st.subheader("Defaulters List")
-                display_df = defaulter_df[['full_name', 'phone_number']]
-                display_df.columns = ['Name', 'Phone']
-                st.dataframe(display_df, use_container_width=True)
-            else:
-                st.success("No defaulters this month!")
+        # Export Options
+        st.subheader("Export Options")
+        if is_admin():
+            export_col1, export_col2 = st.columns(2)
+
+            with export_col1:
+                if st.button("Export to Excel"):
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        display_df.to_excel(writer, sheet_name='Contributions', index=False)
+                    st.download_button(
+                        label="Download Excel Report",
+                        data=output.getvalue(),
+                        file_name=f"contributions_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+
+            with export_col2:
+                if st.button("Generate PDF Report"):
+                    st.info("PDF report generation feature coming soon!")
+        else:
+            st.warning("⚠️ Export options are only available to administrators.")
     else:
         st.warning("Contribution data format is incorrect. Please check the database.")
-
-    # Add after the detailed records
-    st.subheader("Export Options")
-    export_col1, export_col2 = st.columns(2)
-
-    with export_col1:
-        if st.button("Export to Excel"):
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                display_df.to_excel(writer, sheet_name='Contributions', index=False)
-            st.download_button(
-                label="Download Excel Report",
-                data=output.getvalue(),
-                file_name=f"contributions_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-    with export_col2:
-        if st.button("Generate PDF Report"):
-            st.info("PDF report generation feature coming soon!")
 else:
     st.info("No contributions have been recorded yet.") 

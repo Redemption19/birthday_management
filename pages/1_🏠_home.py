@@ -5,12 +5,19 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 import calendar
+from utils.auth import is_admin
 
 # Define custom color scheme
 CUSTOM_COLORS = ['#F13C59', '#BE61CA', '#633EBB']
 CUSTOM_COLORSCALE = [[0, '#F13C59'], [0.5, '#BE61CA'], [1, '#633EBB']]
 
 st.title("Dashboard")
+
+# # Add this near the top of your file, after the imports
+# st.sidebar.write("Debug Information:")
+# st.sidebar.write("Authentication Status:", st.session_state.get('authenticated', False))
+# st.sidebar.write("User Role:", st.session_state.get('user_role', 'none'))
+# st.sidebar.write("Is Admin:", is_admin())
 
 # Initialize connection and get data
 supabase = init_connection()
@@ -117,11 +124,15 @@ if current_month_birthdays:
     
     # Birthday list
     st.subheader("Birthday List")
-    display_df = birthday_df[['full_name', 'birthday']]
-    display_df.columns = ['Name', 'Birthday']
-    st.dataframe(display_df, use_container_width=True)
-else:
-    st.info("No birthdays this month")
+    if is_admin():
+        if current_month_birthdays:
+            display_df = birthday_df[['full_name', 'birthday']]
+            display_df.columns = ['Name', 'Birthday']
+            st.dataframe(display_df, use_container_width=True)
+        else:
+            st.info("No birthdays this month")
+    else:
+        st.warning("⚠️ Detailed birthday information is only visible to administrators.")
 
 # Recent Contributions with Trend
 st.subheader("Recent Contributions")
@@ -149,10 +160,13 @@ if all_contributions:
     )
     st.plotly_chart(fig, use_container_width=True)
     
-    # Recent contributions table
-    display_df = recent_df[['member_name', 'amount', 'contribution_type', 'payment_date']]
-    display_df.columns = ['Member', 'Amount (GH₵)', 'Type', 'Date']
-    st.dataframe(display_df, use_container_width=True)
+    # Recent contributions table - only visible to admins
+    if is_admin():
+        display_df = recent_df[['member_name', 'amount', 'contribution_type', 'payment_date']]
+        display_df.columns = ['Member', 'Amount (GH₵)', 'Type', 'Date']
+        st.dataframe(display_df, use_container_width=True)
+    else:
+        st.warning("⚠️ Detailed contribution records are only visible to administrators.")
 else:
     st.info("No recent contributions")
 
