@@ -7,7 +7,11 @@ def main():
     init_connection()
     
     # Check and send birthday reminders
-    check_and_send_birthday_reminders()
+    result_message, success = check_and_send_birthday_reminders()
+    if success:
+        st.success(result_message)
+    else:
+        st.error(result_message)
 
 if __name__ == "__main__":
     main()
